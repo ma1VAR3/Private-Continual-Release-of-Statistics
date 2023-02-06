@@ -16,14 +16,15 @@ def get_probs(values, left_counts, right_counts, epsilon):
     c = np.maximum(left_counts, right_counts)
     probs = [math.exp((-epsilon*c[i])/4) for i in range(len(values))]
     probs = probs / np.sum(probs)
-    print("Probability assigned to quantized means: ", probs)
+    # print("Probability assigned to quantized means: ", probs)
     return probs
 
 
 def private_median_of_means(means, l, l_b, u_b, epsilon):
     
     # Creating bins for quantization
-    quantized_bins = np.arange(l_b, u_b, l)
+    bin_size = 2 * math.pow(2, -l/2)
+    quantized_bins = np.arange(l_b, u_b, bin_size)
     quantized_bins = np.append(quantized_bins, u_b) if quantized_bins[-1] != u_b else quantized_bins
     
     # Assiging each mean to the closest bin
@@ -33,8 +34,8 @@ def private_median_of_means(means, l, l_b, u_b, epsilon):
     
     quantized_means = np.sort(quantized_means)
     left_counts, right_counts = get_left_right_counts(quantized_means)
-    print("Quantized bins: ", quantized_bins)
-    print("Quantized means: ", quantized_means)
+    # print("Quantized bins: ", quantized_bins)
+    # print("Quantized means: ", quantized_means)
     
     probs = get_probs(quantized_means, left_counts, right_counts, epsilon)
     selected_quantized_mean = np.random.choice(quantized_means, p=probs)
@@ -43,13 +44,30 @@ def private_median_of_means(means, l, l_b, u_b, epsilon):
 
 
 if __name__ == "__main__":
-    means = [1, 2, 3, 4, 5]
-    l = 1.5
+    
+    l = 6
     l_b = 0
-    u_b = 10
-    epsilon = 1
-    private_mean = private_median_of_means(means, l, l_b, u_b, epsilon)    
+    u_b = 65
+    epsilon = 5
+    beta = 0.01
+    num_exp = 1000000
+    k = math.floor((16 / epsilon) * (math.log(  math.pow(2, l/2) / beta  )))
+    print("Number of user groups (k): ", k) 
+    num_vals = int(k * math.pow(2, l-1))
+    vals = np.random.normal(18.56960, 10.332769, num_vals)
+    grouped_vals = np.array_split(vals, k)
+    means = [np.mean(x) for x in grouped_vals]
+    # print("Means of user groups: ", means)
+    
+    cum_loss = 0
+    for i in range(num_exp):
+        private_mean = private_median_of_means(means, l, l_b, u_b, epsilon) 
+        loss = np.abs(private_mean - np.mean(means))
+        cum_loss += loss
+    cum_loss = cum_loss / num_exp
+    
     print("Actual mean of means: ", np.mean(means))
     print("Actual median of means: ", np.median(means))
-    print("Private median of means: ", private_mean)
+    print("Cumulative loss for emperical mean: ", cum_loss)
+    # print("Private median of means: ", private_mean)
     print("Epsilon: ", epsilon)
