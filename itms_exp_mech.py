@@ -57,30 +57,46 @@ def get_hats_data(data, hats):
         h_d = data[data["HAT"]==h]
         h_d_gb = h_d.groupby(["HAT", "license_plate"]).agg({"speed":"count"}).reset_index()
         p_sets = []
-        m_star = h_d_gb["speed"].max()
+        # m_star = h_d_gb["speed"].max()
         m_avg = math.floor(np.mean(h_d_gb["speed"]))
-        m_rms = math.floor(math.sqrt(np.mean([math.pow(i, 2) for i in h_d_gb["speed"]])))
+        # m_rms = math.floor(math.sqrt(np.mean([math.pow(i, 2) for i in h_d_gb["speed"]])))
+        m_median = np.median(h_d_gb["speed"])
+        m_medianX = m_median * 0.8
         print("Sigma mi : ", np.sum(h_d_gb["speed"]))
-        k_mstar = np.floor(np.sum([np.minimum(i, m_star) for i in h_d_gb["speed"]]) / m_star)
+        # k_mstar = np.floor(np.sum([np.minimum(i, m_star) for i in h_d_gb["speed"]]) / m_star)
         k_mavg = np.floor(np.sum([np.minimum(i, m_avg) for i in h_d_gb["speed"]]) / m_avg)
-        k_mrms = np.floor(np.sum([np.minimum(i, m_rms) for i in h_d_gb["speed"]]) / m_rms)
-        print("When L=m* => L = {}, K = {}, Samples Used = {}".format(m_star, k_mstar, m_star*k_mstar))
-        print("When L=m_rms => L = {}, K = {}, Samples Used = {}".format(m_rms, k_mrms, m_rms*k_mrms))
+        # k_mrms = np.floor(np.sum([np.minimum(i, m_rms) for i in h_d_gb["speed"]]) / m_rms)
+        k_mmedian = np.floor(np.sum([np.minimum(i, m_median) for i in h_d_gb["speed"]]) / m_median)
+        k_medianX = np.floor(np.sum([np.minimum(i, m_medianX) for i in h_d_gb["speed"]]) / m_medianX)
+        # print("When L=m* => L = {}, K = {}, Samples Used = {}".format(m_star, k_mstar, m_star*k_mstar))
+        # print("When L=m_rms => L = {}, K = {}, Samples Used = {}".format(m_rms, k_mrms, m_rms*k_mrms))
         print("When L=m_avg => L = {}, K = {}, Samples Used = {}".format(m_avg, k_mavg, m_avg*k_mavg))
-        p_sets.append({
-            "Type" : "Maximum m",
-            "L" : m_star,
-            "K" : k_mstar
-        })
-        p_sets.append({
-            "Type" : "RMS m",
-            "L" : m_rms,
-            "K" : k_mrms
-        })
+        print("When L=m_median => L = {}, K = {}, Samples Used = {}".format(m_median, k_mmedian, m_median*k_mmedian))
+        print("When L=m_medianX => L = {}, K = {}, Samples Used = {}".format(m_medianX, k_medianX, m_medianX*k_medianX))
+        # p_sets.append({
+        #     "Type" : "Maximum m",
+        #     "L" : m_star,
+        #     "K" : k_mstar
+        # })
+        # p_sets.append({
+        #     "Type" : "RMS m",
+        #     "L" : m_rms,
+        #     "K" : k_mrms
+        # })
         p_sets.append({
             "Type" : "Average m",
             "L" : m_avg,
             "K" : k_mavg
+        })
+        p_sets.append({
+            "Type" : "Median m",
+            "L" : m_median,
+            "K" : k_mmedian
+        })
+        p_sets.append({
+            "Type" : "Median m*0.8",
+            "L" : m_medianX,
+            "K" : k_medianX
         })
         hat_data = {
             "HAT" : h,
@@ -131,9 +147,9 @@ def get_probs(bins, left_counts, right_counts, epsilon):
     return probs
 
 def private_median_of_means(user_group_means, L, tau, ub, lb, epsilon):
-    quantized_bins = [lb]
-    quantized_bins = np.append(quantized_bins, np.arange(lb+tau/2, ub, tau))
-    quantized_bins = np.append(quantized_bins, ub) if quantized_bins[-1] != ub else quantized_bins
+    quantized_bins = np.arange(lb+tau/2, ub, tau)
+    # quantized_bins = np.append(quantized_bins, np.arange(lb+tau/2, ub, tau))
+    # quantized_bins = np.append(quantized_bins, ub) if quantized_bins[-1] != ub else quantized_bins
     
     diff_matrix = np.subtract.outer(user_group_means, quantized_bins)
     idx = np.abs(diff_matrix).argmin(axis=1)
@@ -148,18 +164,25 @@ def private_median_of_means(user_group_means, L, tau, ub, lb, epsilon):
 def project_vals(vals, coarse_mean, tau):
     ub = coarse_mean + 2*tau
     lb = coarse_mean - 2*tau
-    projected_vals = np.clip(vals, )
+    if lb<tau/2:
+        lb = tau/2
+        ub = lb + 4*tau
+    if ub>65:
+        ub = 65
+        lb = 65 - 4*tau
+    projected_vals = np.clip(vals, lb, ub)
+    return projected_vals
     
 
 if __name__ == "__main__":
     
     epsilon = 1
     beta = 0.01
-    tau = [4]
+    tau = [2, 3, 4, 5, 6, 7, 8]
     upper_bound = 65
     lower_bound = 0
     num_hats = 1
-    num_exp = 1
+    num_exp = 100000
     data = get_data()
     hats = get_top_k_diversity_hats(data, num_hats)
     hats_data = get_hats_data(data, hats)
@@ -168,8 +191,8 @@ if __name__ == "__main__":
         hat_dict = hats_data[i]
         print("Running experiments for HAT: ", hat_dict["HAT"])
         hat_data = hat_dict["data"]
-        actual_means = np.mean(hat_data["speed"].values)
-        print("Actual mean: ", actual_means)
+        actual_mean = np.mean(hat_data["speed"].values)
+        print("Actual mean: ", actual_mean)
         print()
         for params in hat_dict["param_sets"]:
             print("Running experiment for parameter settings: ")
@@ -179,6 +202,9 @@ if __name__ == "__main__":
             print("\tMean of user groups: ", np.mean(actual_means_of_user_groups))
             for t in tau:
                 print("\tTau=", t)
+                losses = []
+                statistical_losses = []
+                random_losses = []
                 for j in range(num_exp):
                     mean_coarse_estimate = private_median_of_means(
                         actual_means_of_user_groups, 
@@ -188,5 +214,14 @@ if __name__ == "__main__":
                         lower_bound, 
                         epsilon
                     )
-                    print("\t", mean_coarse_estimate)
-            
+                    projected_vals = project_vals(actual_means_of_user_groups, mean_coarse_estimate, t)
+                    mean_projected_vals = np.mean(projected_vals)
+                    # print("\t\tMean of projected values: ", mean_projected_vals)
+                    noise_projected_vals = np.random.laplace(0, (4*t)/(params["K"]*epsilon))
+                    final_estimate = mean_projected_vals + noise_projected_vals
+                    losses.append(np.abs(final_estimate - actual_mean))
+                    statistical_losses.append(np.abs(mean_projected_vals - actual_mean))
+                    random_losses.append(np.abs(noise_projected_vals))
+                print("\t\tAverage MAE across all runs: ", np.mean(losses))
+                print("\t\tAverage statistical loss across all runs: ", np.mean(statistical_losses))
+                print("\t\tAverage random loss across all runs: ", np.mean(random_losses))
