@@ -145,6 +145,12 @@ def private_median_of_means(user_group_means, L, tau, ub, lb, epsilon):
     selected_quantized_mean = np.random.choice(quantized_bins, p=probs)
     return selected_quantized_mean
 
+def project_vals(vals, coarse_mean, tau):
+    ub = coarse_mean + 2*tau
+    lb = coarse_mean - 2*tau
+    projected_vals = np.clip(vals, )
+    
+
 if __name__ == "__main__":
     
     epsilon = 1
