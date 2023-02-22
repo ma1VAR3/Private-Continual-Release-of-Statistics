@@ -2,6 +2,7 @@ import math
 import numpy as np
 import pandas as pd
 import h3
+import plotly.express as px
 
 def get_data():
     df =pd.read_csv("./suratITMSDPtest/suratITMSDPtest.csv")
@@ -57,32 +58,32 @@ def get_hats_data(data, hats):
         h_d = data[data["HAT"]==h]
         h_d_gb = h_d.groupby(["HAT", "license_plate"]).agg({"speed":"count"}).reset_index()
         p_sets = []
-        # m_star = h_d_gb["speed"].max()
+        m_star = h_d_gb["speed"].max()
         m_avg = math.floor(np.mean(h_d_gb["speed"]))
-        # m_rms = math.floor(math.sqrt(np.mean([math.pow(i, 2) for i in h_d_gb["speed"]])))
+        m_rms = math.floor(math.sqrt(np.mean([math.pow(i, 2) for i in h_d_gb["speed"]])))
         m_median = np.median(h_d_gb["speed"])
-        m_medianX = m_median * 0.8
+        # m_medianX = m_median * 0.8
         print("Sigma mi : ", np.sum(h_d_gb["speed"]))
-        # k_mstar = np.floor(np.sum([np.minimum(i, m_star) for i in h_d_gb["speed"]]) / m_star)
+        k_mstar = np.floor(np.sum([np.minimum(i, m_star) for i in h_d_gb["speed"]]) / m_star)
         k_mavg = np.floor(np.sum([np.minimum(i, m_avg) for i in h_d_gb["speed"]]) / m_avg)
-        # k_mrms = np.floor(np.sum([np.minimum(i, m_rms) for i in h_d_gb["speed"]]) / m_rms)
+        k_mrms = np.floor(np.sum([np.minimum(i, m_rms) for i in h_d_gb["speed"]]) / m_rms)
         k_mmedian = np.floor(np.sum([np.minimum(i, m_median) for i in h_d_gb["speed"]]) / m_median)
-        k_medianX = np.floor(np.sum([np.minimum(i, m_medianX) for i in h_d_gb["speed"]]) / m_medianX)
-        # print("When L=m* => L = {}, K = {}, Samples Used = {}".format(m_star, k_mstar, m_star*k_mstar))
-        # print("When L=m_rms => L = {}, K = {}, Samples Used = {}".format(m_rms, k_mrms, m_rms*k_mrms))
+        # k_medianX = np.floor(np.sum([np.minimum(i, m_medianX) for i in h_d_gb["speed"]]) / m_medianX)
+        print("When L=m* => L = {}, K = {}, Samples Used = {}".format(m_star, k_mstar, m_star*k_mstar))
+        print("When L=m_rms => L = {}, K = {}, Samples Used = {}".format(m_rms, k_mrms, m_rms*k_mrms))
         print("When L=m_avg => L = {}, K = {}, Samples Used = {}".format(m_avg, k_mavg, m_avg*k_mavg))
         print("When L=m_median => L = {}, K = {}, Samples Used = {}".format(m_median, k_mmedian, m_median*k_mmedian))
-        print("When L=m_medianX => L = {}, K = {}, Samples Used = {}".format(m_medianX, k_medianX, m_medianX*k_medianX))
+        # print("When L=m_medianX => L = {}, K = {}, Samples Used = {}".format(m_medianX, k_medianX, m_medianX*k_medianX))
         # p_sets.append({
         #     "Type" : "Maximum m",
         #     "L" : m_star,
         #     "K" : k_mstar
         # })
-        # p_sets.append({
-        #     "Type" : "RMS m",
-        #     "L" : m_rms,
-        #     "K" : k_mrms
-        # })
+        p_sets.append({
+            "Type" : "RMS m",
+            "L" : m_rms,
+            "K" : k_mrms
+        })
         p_sets.append({
             "Type" : "Average m",
             "L" : m_avg,
@@ -93,11 +94,11 @@ def get_hats_data(data, hats):
             "L" : m_median,
             "K" : k_mmedian
         })
-        p_sets.append({
-            "Type" : "Median m*0.8",
-            "L" : m_medianX,
-            "K" : k_medianX
-        })
+        # p_sets.append({
+        #     "Type" : "Median m*0.8",
+        #     "L" : m_medianX,
+        #     "K" : k_medianX
+        # })
         hat_data = {
             "HAT" : h,
             "data" : h_d,
@@ -178,11 +179,11 @@ if __name__ == "__main__":
     
     epsilon = 1
     beta = 0.01
-    tau = [2, 3, 4, 5, 6, 7, 8]
+    tau = [2, 3, 4, 5]
     upper_bound = 65
     lower_bound = 0
     num_hats = 1
-    num_exp = 100000
+    num_exp = 10000
     data = get_data()
     hats = get_top_k_diversity_hats(data, num_hats)
     hats_data = get_hats_data(data, hats)
@@ -194,12 +195,18 @@ if __name__ == "__main__":
         actual_mean = np.mean(hat_data["speed"].values)
         print("Actual mean: ", actual_mean)
         print()
+        plot_x = []
+        plot_y = []
+        plot_zt = []
         for params in hat_dict["param_sets"]:
             print("Running experiment for parameter settings: ")
             print("\tType: {}, L: {}, K: {}".format(params["Type"], params["L"], params["K"]))
+            plot_x.append(params["L"])
+            plot_y.append(params["K"])
             user_arrays = get_user_arrays(hat_data, params["L"], params["K"])
             actual_means_of_user_groups = [np.mean(x) for x in user_arrays]
             print("\tMean of user groups: ", np.mean(actual_means_of_user_groups))
+            plot_data = []
             for t in tau:
                 print("\tTau=", t)
                 losses = []
@@ -217,7 +224,7 @@ if __name__ == "__main__":
                     projected_vals = project_vals(actual_means_of_user_groups, mean_coarse_estimate, t)
                     mean_projected_vals = np.mean(projected_vals)
                     # print("\t\tMean of projected values: ", mean_projected_vals)
-                    noise_projected_vals = np.random.laplace(0, (4*t)/(params["K"]*epsilon))
+                    noise_projected_vals = np.random.laplace(0, (8*t)/(params["K"]*epsilon))
                     final_estimate = mean_projected_vals + noise_projected_vals
                     losses.append(np.abs(final_estimate - actual_mean))
                     statistical_losses.append(np.abs(mean_projected_vals - actual_mean))
@@ -225,3 +232,41 @@ if __name__ == "__main__":
                 print("\t\tAverage MAE across all runs: ", np.mean(losses))
                 print("\t\tAverage statistical loss across all runs: ", np.mean(statistical_losses))
                 print("\t\tAverage random loss across all runs: ", np.mean(random_losses))
+                print("\t\t95th Percentile MAE across all runs: ", np.percentile(losses, 95))
+                print("\t\t98th Percentile MAE across all runs: ", np.percentile(losses, 98))
+                print("\t\t99th Percentile MAE across all runs: ", np.percentile(losses, 99))
+                plot_data.append(np.mean(losses))
+            plot_zt.append(plot_data)
+            print()    
+            
+            
+        plot_z = []
+        for i in range(len(plot_zt[0])):
+            tau_vals = []
+            for j in range(len(plot_zt)):
+                tau_vals.append(plot_zt[j][i])
+            plot_z.append(tau_vals)
+        fig = px.line_3d(x=plot_x, y=plot_y, z=plot_z[0])
+        for i in range(1, len(plot_z)):
+            fig.add_scatter3d(x=plot_x, y=plot_y, z=plot_z[i])
+        fig.show()
+        
+        fig2 = px.imshow(plot_zt, x=tau, y=plot_x, labels=dict(x="Tau", y="L"), text_auto=True, aspect="auto")
+        fig2.show()
+        
+        
+        # Running experiments for Laplace mechanism
+        print("Running experiments for Laplace mechanism")
+        h_d_gb = hat_data.groupby(["HAT", "license_plate"]).agg({"speed":"count"}).reset_index()
+        m_star = h_d_gb["speed"].max()
+        sigma_mi = np.sum(h_d_gb["speed"])
+        lap_losses = []
+        for j in range(num_exp):
+            noise = np.random.laplace(0, (upper_bound - lower_bound) * m_star/(sigma_mi*2*epsilon))
+            lap_losses.append(np.abs(noise))
+        print("\tAverage MAE across all runs: ", np.mean(lap_losses))
+        print("\t95th Percentile MAE across all runs: ", np.percentile(lap_losses, 95))
+        print("\t98th Percentile MAE across all runs: ", np.percentile(lap_losses, 98))
+        print("\t99th Percentile MAE across all runs: ", np.percentile(lap_losses, 99))
+            
+            
