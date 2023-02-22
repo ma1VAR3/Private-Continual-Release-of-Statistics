@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import h3
 import plotly.express as px
+from dash import Dash, html, dcc
 
 def get_data():
     df =pd.read_csv("./suratITMSDPtest/suratITMSDPtest.csv")
@@ -177,13 +178,17 @@ def project_vals(vals, coarse_mean, tau):
 
 if __name__ == "__main__":
     
-    epsilon = 1
+    epsilons = [0.1, 0.5, 1, 2, 5]
     beta = 0.01
     tau = [2, 3, 4, 5]
     upper_bound = 65
     lower_bound = 0
     num_hats = 1
-    num_exp = 10000
+    num_exp = 100
+    
+    app = Dash(__name__)
+    figs = []
+    
     data = get_data()
     hats = get_top_k_diversity_hats(data, num_hats)
     hats_data = get_hats_data(data, hats)
@@ -195,78 +200,104 @@ if __name__ == "__main__":
         actual_mean = np.mean(hat_data["speed"].values)
         print("Actual mean: ", actual_mean)
         print()
-        plot_x = []
-        plot_y = []
-        plot_zt = []
-        for params in hat_dict["param_sets"]:
-            print("Running experiment for parameter settings: ")
-            print("\tType: {}, L: {}, K: {}".format(params["Type"], params["L"], params["K"]))
-            plot_x.append(params["L"])
-            plot_y.append(params["K"])
-            user_arrays = get_user_arrays(hat_data, params["L"], params["K"])
-            actual_means_of_user_groups = [np.mean(x) for x in user_arrays]
-            print("\tMean of user groups: ", np.mean(actual_means_of_user_groups))
-            plot_data = []
-            for t in tau:
-                print("\tTau=", t)
-                losses = []
-                statistical_losses = []
-                random_losses = []
-                for j in range(num_exp):
-                    mean_coarse_estimate = private_median_of_means(
-                        actual_means_of_user_groups, 
-                        params["L"], 
-                        t, 
-                        upper_bound, 
-                        lower_bound, 
-                        epsilon
-                    )
-                    projected_vals = project_vals(actual_means_of_user_groups, mean_coarse_estimate, t)
-                    mean_projected_vals = np.mean(projected_vals)
-                    # print("\t\tMean of projected values: ", mean_projected_vals)
-                    noise_projected_vals = np.random.laplace(0, (8*t)/(params["K"]*epsilon))
-                    final_estimate = mean_projected_vals + noise_projected_vals
-                    losses.append(np.abs(final_estimate - actual_mean))
-                    statistical_losses.append(np.abs(mean_projected_vals - actual_mean))
-                    random_losses.append(np.abs(noise_projected_vals))
-                print("\t\tAverage MAE across all runs: ", np.mean(losses))
-                print("\t\tAverage statistical loss across all runs: ", np.mean(statistical_losses))
-                print("\t\tAverage random loss across all runs: ", np.mean(random_losses))
-                print("\t\t95th Percentile MAE across all runs: ", np.percentile(losses, 95))
-                print("\t\t98th Percentile MAE across all runs: ", np.percentile(losses, 98))
-                print("\t\t99th Percentile MAE across all runs: ", np.percentile(losses, 99))
-                plot_data.append(np.mean(losses))
-            plot_zt.append(plot_data)
-            print()    
+        for epsilon in epsilons:
+            plot_x = []
+            plot_y = []
+            plot_zt = []
+            print("Running experiments for epsilon: ", epsilon)
+            for params in hat_dict["param_sets"]:
+                print("\tRunning experiment for parameter settings: ")
+                print("\tType: {}, L: {}, K: {}".format(params["Type"], params["L"], params["K"]))
+                plot_x.append(params["L"])
+                plot_y.append(params["K"])
+                user_arrays = get_user_arrays(hat_data, params["L"], params["K"])
+                actual_means_of_user_groups = [np.mean(x) for x in user_arrays]
+                print("\tMean of user groups: ", np.mean(actual_means_of_user_groups))
+                plot_data = []
+                for t in tau:
+                    print("\tTau=", t)
+                    losses = []
+                    statistical_losses = []
+                    random_losses = []
+                    for j in range(num_exp):
+                        mean_coarse_estimate = private_median_of_means(
+                            actual_means_of_user_groups, 
+                            params["L"], 
+                            t, 
+                            upper_bound, 
+                            lower_bound, 
+                            epsilon
+                        )
+                        projected_vals = project_vals(actual_means_of_user_groups, mean_coarse_estimate, t)
+                        mean_projected_vals = np.mean(projected_vals)
+                        # print("\t\tMean of projected values: ", mean_projected_vals)
+                        noise_projected_vals = np.random.laplace(0, (8*t)/(params["K"]*epsilon))
+                        final_estimate = mean_projected_vals + noise_projected_vals
+                        losses.append(np.abs(final_estimate - actual_mean))
+                        statistical_losses.append(np.abs(mean_projected_vals - actual_mean))
+                        random_losses.append(np.abs(noise_projected_vals))
+                    print("\t\tAverage MAE across all runs: ", np.mean(losses))
+                    print("\t\tAverage statistical loss across all runs: ", np.mean(statistical_losses))
+                    print("\t\tAverage random loss across all runs: ", np.mean(random_losses))
+                    print("\t\t95th Percentile MAE across all runs: ", np.percentile(losses, 95))
+                    print("\t\t98th Percentile MAE across all runs: ", np.percentile(losses, 98))
+                    print("\t\t99th Percentile MAE across all runs: ", np.percentile(losses, 99))
+                    plot_data.append(np.mean(losses))
+                plot_zt.append(plot_data)
+                print()    
+                
+                
+            plot_z = []
+            for k in range(len(plot_zt[0])):
+                tau_vals = []
+                for l in range(len(plot_zt)):
+                    tau_vals.append(plot_zt[l][k])
+                plot_z.append(tau_vals)
+            fig = px.line_3d(x=plot_x, y=plot_y, z=plot_z[0])
+            for k in range(1, len(plot_z)):
+                fig.add_scatter3d(x=plot_x, y=plot_y, z=plot_z[k])
+            # fig.show()
             
+            fig2 = px.imshow(plot_zt, x=tau, y=plot_x, labels=dict(x="Tau", y="L"), text_auto=True, aspect="auto")
+            # fig2.show()
+            f_arr = [fig, fig2]
+            figs.append(f_arr)
             
-        plot_z = []
-        for i in range(len(plot_zt[0])):
-            tau_vals = []
-            for j in range(len(plot_zt)):
-                tau_vals.append(plot_zt[j][i])
-            plot_z.append(tau_vals)
-        fig = px.line_3d(x=plot_x, y=plot_y, z=plot_z[0])
-        for i in range(1, len(plot_z)):
-            fig.add_scatter3d(x=plot_x, y=plot_y, z=plot_z[i])
-        fig.show()
+            # Running experiments for Laplace mechanism
+            print("Running experiments for Laplace mechanism")
+            h_d_gb = hat_data.groupby(["HAT", "license_plate"]).agg({"speed":"count"}).reset_index()
+            m_star = h_d_gb["speed"].max()
+            sigma_mi = np.sum(h_d_gb["speed"])
+            lap_losses = []
+            for j in range(num_exp):
+                noise = np.random.laplace(0, (upper_bound - lower_bound) * m_star/(sigma_mi*2*epsilon))
+                lap_losses.append(np.abs(noise))
+            print("\tAverage MAE across all runs: ", np.mean(lap_losses))
+            print("\t95th Percentile MAE across all runs: ", np.percentile(lap_losses, 95))
+            print("\t98th Percentile MAE across all runs: ", np.percentile(lap_losses, 98))
+            print("\t99th Percentile MAE across all runs: ", np.percentile(lap_losses, 99))
+    
+    children = [
+        html.H1(children='One Shot Exponential Mechanism for Mean Estimation'),
+
+        html.Div(children='''
+            Based on research conucted in [FS17], [Lev+21] and [GRST22]
+        '''),
+    ]
+    
+    for f in range (len(figs)):
+        children.append(
+            html.H3(children='FOR EPSILON: '+str(epsilons[f]))
+        )
+        children.append(dcc.Graph(
+            id='3D-plot'+str(f),
+            figure=figs[f][0]
+        ))
+        children.append(dcc.Graph(
+            id='heatmap-plot'+str(f),
+            figure=figs[f][1]
+        ))
         
-        fig2 = px.imshow(plot_zt, x=tau, y=plot_x, labels=dict(x="Tau", y="L"), text_auto=True, aspect="auto")
-        fig2.show()
+    app.layout = html.Div(children=children)
         
-        
-        # Running experiments for Laplace mechanism
-        print("Running experiments for Laplace mechanism")
-        h_d_gb = hat_data.groupby(["HAT", "license_plate"]).agg({"speed":"count"}).reset_index()
-        m_star = h_d_gb["speed"].max()
-        sigma_mi = np.sum(h_d_gb["speed"])
-        lap_losses = []
-        for j in range(num_exp):
-            noise = np.random.laplace(0, (upper_bound - lower_bound) * m_star/(sigma_mi*2*epsilon))
-            lap_losses.append(np.abs(noise))
-        print("\tAverage MAE across all runs: ", np.mean(lap_losses))
-        print("\t95th Percentile MAE across all runs: ", np.percentile(lap_losses, 95))
-        print("\t98th Percentile MAE across all runs: ", np.percentile(lap_losses, 98))
-        print("\t99th Percentile MAE across all runs: ", np.percentile(lap_losses, 99))
-            
-            
+    app.run_server(debug=True)
