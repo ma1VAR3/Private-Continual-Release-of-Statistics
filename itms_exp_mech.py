@@ -4,6 +4,7 @@ import pandas as pd
 import h3
 import plotly.express as px
 from dash import Dash, html, dcc
+import plotly.graph_objects as go
 
 def get_data():
     df =pd.read_csv("./suratITMSDPtest/suratITMSDPtest.csv")
@@ -175,20 +176,72 @@ def project_vals(vals, coarse_mean, tau):
     projected_vals = np.clip(vals, lb, ub)
     return projected_vals
     
+def get_table_row(L_v, K_v, tau, percentile, val, type, s1, s2):
+    if type == "main":
+        return html.Tr([
+            html.Td(L_v, rowSpan=s1),
+            html.Td(K_v, rowSpan=s1),
+            html.Td(tau, rowSpan=s2),
+            html.Td(percentile),
+            html.Td(val)
+        ])
+    
+    elif type == "sub":
+        return html.Tr([
+            html.Td(tau, rowSpan=s2),
+            html.Td(percentile),
+            html.Td(val)
+        ])
+        
+    return html.Tr([
+        html.Td(percentile),
+        html.Td(val)
+    ])
+    
+def get_table(L_v, K_v, tau, percentiles, vals):
+    t_children = []
+    t_children.append(
+        html.Thead([
+            html.Tr([
+                html.Th("L"),
+                html.Th("K"),
+                html.Th("Tau"),
+                html.Th("Percentile"),
+                html.Th("MAE Loss Val")
+            ])
+        ])
+    )
+    counter = 0
+    type="main"
+    tb_children = []
+    for i in range(len(L_v)):
+        for j in range(len(tau)):
+            for k in range(len(percentiles)):
+                if counter % (len(tau) * len(percentiles)) == 0:
+                    type = "main"
+                elif counter % len(percentiles) == 0:
+                    type = "sub"
+                else:
+                    type = "subsub"
+                tb_children.append(get_table_row(L_v[i], K_v[i], tau[j], percentiles[k], vals[i][j][k], type, len(tau) * len(percentiles), len(percentiles)))
+                counter += 1
+    t_children.append(html.Tbody(tb_children))
+    return html.Table(t_children)
 
 if __name__ == "__main__":
     
     epsilons = [0.1, 0.5, 1, 2, 5]
     beta = 0.01
-    tau = [2, 3, 4, 5]
+    tau = [3, 4, 5]
     upper_bound = 65
     lower_bound = 0
     num_hats = 1
-    num_exp = 100
-    
+    num_exp = 100000
+    percentiles = [95, 98, 99]
     app = Dash(__name__)
     figs = []
-    
+    tables = []
+    lap_bounds = []
     data = get_data()
     hats = get_top_k_diversity_hats(data, num_hats)
     hats_data = get_hats_data(data, hats)
@@ -204,6 +257,7 @@ if __name__ == "__main__":
             plot_x = []
             plot_y = []
             plot_zt = []
+            mech_bounds = []
             print("Running experiments for epsilon: ", epsilon)
             for params in hat_dict["param_sets"]:
                 print("\tRunning experiment for parameter settings: ")
@@ -214,11 +268,13 @@ if __name__ == "__main__":
                 actual_means_of_user_groups = [np.mean(x) for x in user_arrays]
                 print("\tMean of user groups: ", np.mean(actual_means_of_user_groups))
                 plot_data = []
+                param_err_bounds = []
                 for t in tau:
                     print("\tTau=", t)
                     losses = []
                     statistical_losses = []
                     random_losses = []
+                    err_bounds = []
                     for j in range(num_exp):
                         mean_coarse_estimate = private_median_of_means(
                             actual_means_of_user_groups, 
@@ -239,23 +295,41 @@ if __name__ == "__main__":
                     print("\t\tAverage MAE across all runs: ", np.mean(losses))
                     print("\t\tAverage statistical loss across all runs: ", np.mean(statistical_losses))
                     print("\t\tAverage random loss across all runs: ", np.mean(random_losses))
-                    print("\t\t95th Percentile MAE across all runs: ", np.percentile(losses, 95))
-                    print("\t\t98th Percentile MAE across all runs: ", np.percentile(losses, 98))
-                    print("\t\t99th Percentile MAE across all runs: ", np.percentile(losses, 99))
+                    for p in percentiles:
+                        print("\t\t{}th Percentile MAE across all runs: ".format(p), np.percentile(losses, p))
+                        err_bounds.append(np.percentile(losses, p))
                     plot_data.append(np.mean(losses))
+                    param_err_bounds.append(err_bounds)
                 plot_zt.append(plot_data)
+                mech_bounds.append(param_err_bounds)
                 print()    
                 
-                
+            #Generate table here:
+            tab = get_table(plot_x, plot_y, tau, percentiles, mech_bounds)
+            tables.append(tab)
+            
             plot_z = []
             for k in range(len(plot_zt[0])):
                 tau_vals = []
                 for l in range(len(plot_zt)):
                     tau_vals.append(plot_zt[l][k])
                 plot_z.append(tau_vals)
-            fig = px.line_3d(x=plot_x, y=plot_y, z=plot_z[0])
-            for k in range(1, len(plot_z)):
-                fig.add_scatter3d(x=plot_x, y=plot_y, z=plot_z[k])
+            
+            fig = go.Figure()
+            # fig = px.scatter_3d(x=plot_x, y=plot_y, z=plot_z[0])
+            for k in range(0, len(plot_z)):
+                fig.add_trace(
+                    go.Scatter3d(x=plot_x, y=plot_y, z=plot_z[k], name="Tau="+str(tau[k]))
+                )
+                # fig.add_scatter3d(x=plot_x, y=plot_y, z=plot_z[k])
+                
+            fig.update_layout(
+                scene = dict(
+                    xaxis_title='L',
+                    yaxis_title='K',
+                    zaxis_title='MAE'
+                )
+            )
             # fig.show()
             
             fig2 = px.imshow(plot_zt, x=tau, y=plot_x, labels=dict(x="Tau", y="L"), text_auto=True, aspect="auto")
@@ -264,7 +338,7 @@ if __name__ == "__main__":
             figs.append(f_arr)
             
             # Running experiments for Laplace mechanism
-            print("Running experiments for Laplace mechanism")
+            print("\tRunning experiments for Laplace mechanism")
             h_d_gb = hat_data.groupby(["HAT", "license_plate"]).agg({"speed":"count"}).reset_index()
             m_star = h_d_gb["speed"].max()
             sigma_mi = np.sum(h_d_gb["speed"])
@@ -272,31 +346,57 @@ if __name__ == "__main__":
             for j in range(num_exp):
                 noise = np.random.laplace(0, (upper_bound - lower_bound) * m_star/(sigma_mi*2*epsilon))
                 lap_losses.append(np.abs(noise))
-            print("\tAverage MAE across all runs: ", np.mean(lap_losses))
-            print("\t95th Percentile MAE across all runs: ", np.percentile(lap_losses, 95))
-            print("\t98th Percentile MAE across all runs: ", np.percentile(lap_losses, 98))
-            print("\t99th Percentile MAE across all runs: ", np.percentile(lap_losses, 99))
+            print("\t\tAverage MAE across all runs: ", np.mean(lap_losses))
+            lap_bounds_p = []
+            for p in percentiles:
+                print("\t\t{}th Percentile MAE across all runs: ".format(p), np.percentile(lap_losses, p))
+                lap_bounds_p.append(np.percentile(lap_losses, p))
+            lap_bounds.append(lap_bounds_p)
+            print()
+            
     
     children = [
         html.H1(children='One Shot Exponential Mechanism for Mean Estimation'),
 
-        html.Div(children='''
-            Based on research conucted in [FS17], [Lev+21] and [GRST22]
-        '''),
+        html.Div(children='Based on research conucted in [FS17], [Lev+21] and [GRST22]', className="description"),
     ]
     
     for f in range (len(figs)):
+        lap_children = []
+        for p in range(len(percentiles)):
+            lap_children.append(
+                html.P(children='For Laplace Mechanism, {}th Percentile MAE: '.format(percentiles[p])+str(lap_bounds[f][p]), className="laplace-bounds")
+            )
         children.append(
-            html.H3(children='FOR EPSILON: '+str(epsilons[f]))
+            html.Div([
+                html.P(children='For Epsilon: '+str(epsilons[f]), className="epsilon"),
+                html.Div([
+                        dcc.Graph(
+                        id='3D-plot'+str(f),
+                        figure=figs[f][0],
+                        className="line-plot"
+                    ),
+                    dcc.Graph(
+                        id='heatmap-plot'+str(f),
+                        figure=figs[f][1],
+                        className="heatmap-plot"
+                    )
+                ], className="graph-container"),
+                html.Div([tables[f]], className="table-container"),
+                html.Div(children=lap_children, className="lap-bounds-container")
+            ], className="epsilon-container")
         )
-        children.append(dcc.Graph(
-            id='3D-plot'+str(f),
-            figure=figs[f][0]
-        ))
-        children.append(dcc.Graph(
-            id='heatmap-plot'+str(f),
-            figure=figs[f][1]
-        ))
+        # children.append(
+        #     html.P(children='For Epsilon: '+str(epsilons[f]), className="epsilon")
+        # )
+        # children.append(dcc.Graph(
+        #     id='3D-plot'+str(f),
+        #     figure=figs[f][0]
+        # ))
+        # children.append(dcc.Graph(
+        #     id='heatmap-plot'+str(f),
+        #     figure=figs[f][1]
+        # ))
         
     app.layout = html.Div(children=children)
         
