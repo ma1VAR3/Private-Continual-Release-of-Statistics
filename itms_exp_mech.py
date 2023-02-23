@@ -316,13 +316,10 @@ if __name__ == "__main__":
                 plot_z.append(tau_vals)
             
             fig = go.Figure()
-            # fig = px.scatter_3d(x=plot_x, y=plot_y, z=plot_z[0])
             for k in range(0, len(plot_z)):
                 fig.add_trace(
                     go.Scatter3d(x=plot_x, y=plot_y, z=plot_z[k], name="Tau="+str(tau[k]))
                 )
-                # fig.add_scatter3d(x=plot_x, y=plot_y, z=plot_z[k])
-                
             fig.update_layout(
                 scene = dict(
                     xaxis_title='L',
@@ -330,10 +327,9 @@ if __name__ == "__main__":
                     zaxis_title='MAE'
                 )
             )
-            # fig.show()
             
             fig2 = px.imshow(plot_zt, x=tau, y=plot_x, labels=dict(x="Tau", y="L"), text_auto=True, aspect="auto")
-            # fig2.show()
+            
             f_arr = [fig, fig2]
             figs.append(f_arr)
             
@@ -386,17 +382,6 @@ if __name__ == "__main__":
                 html.Div(children=lap_children, className="lap-bounds-container")
             ], className="epsilon-container")
         )
-        # children.append(
-        #     html.P(children='For Epsilon: '+str(epsilons[f]), className="epsilon")
-        # )
-        # children.append(dcc.Graph(
-        #     id='3D-plot'+str(f),
-        #     figure=figs[f][0]
-        # ))
-        # children.append(dcc.Graph(
-        #     id='heatmap-plot'+str(f),
-        #     figure=figs[f][1]
-        # ))
         
     app.layout = html.Div(children=children)
         
