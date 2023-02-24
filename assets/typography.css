@@ -37,7 +37,7 @@ h1{
     background-color: white;
     margin: 2rem 8rem;
     padding: 1rem;
-    border-radius: 1rem;
+    border-radius: 0.5rem;
 }
 
 table, th, td {
@@ -49,6 +49,7 @@ table {
     width: 60%;
     margin: auto;
     margin-bottom: 3rem;
+    border-radius: 0.5rem;
 }
 
 th, td {
@@ -62,3 +63,11 @@ th, td {
     /* margin-left: 4rem;
     margin-bottom: 2rem; */ 
 }
+
+/* .tbl-row1:nth-child(even) {
+    background-color: #c1c1c1;
+}
+
+.tbl-row2:nth-child(even) {
+    background-color: #c1c1c1;
+} */

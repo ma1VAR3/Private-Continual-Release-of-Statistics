@@ -176,29 +176,33 @@ def project_vals(vals, coarse_mean, tau):
     projected_vals = np.clip(vals, lb, ub)
     return projected_vals
     
-def get_table_row(L_v, K_v, tau, percentile, val, type, s1, s2):
+def get_table_row(L_v, K_v, tau, percentile, val, val_stat, val_random, type, s1, s2):
     if type == "main":
         return html.Tr([
             html.Td(L_v, rowSpan=s1),
             html.Td(K_v, rowSpan=s1),
             html.Td(tau, rowSpan=s2),
-            html.Td(percentile),
-            html.Td(val)
+            html.Td(round(val_stat, 3), rowSpan=s2),
+            html.Td(round(val_random, 3), rowSpan=s2),
+            html.Td(percentile, className="tbl-row1"),
+            html.Td(round(val, 3), className="tbl-row2")
         ])
     
     elif type == "sub":
         return html.Tr([
             html.Td(tau, rowSpan=s2),
-            html.Td(percentile),
-            html.Td(val)
+            html.Td(round(val_stat, 3), rowSpan=s2),
+            html.Td(round(val_random, 3), rowSpan=s2),
+            html.Td(percentile, className="tbl-row1"),
+            html.Td(round(val, 3), className="tbl-row2")
         ])
         
     return html.Tr([
-        html.Td(percentile),
-        html.Td(val)
+        html.Td(percentile, className="tbl-row1"),
+        html.Td(round(val, 3), className="tbl-row2")
     ])
     
-def get_table(L_v, K_v, tau, percentiles, vals):
+def get_table(L_v, K_v, tau, percentiles, vals, vals_stat, vals_rand):
     t_children = []
     t_children.append(
         html.Thead([
@@ -206,6 +210,8 @@ def get_table(L_v, K_v, tau, percentiles, vals):
                 html.Th("L"),
                 html.Th("K"),
                 html.Th("Tau"),
+                html.Th("Statistical Error"),
+                html.Th("Random Error"),
                 html.Th("Percentile"),
                 html.Th("MAE Loss Val")
             ])
@@ -223,16 +229,16 @@ def get_table(L_v, K_v, tau, percentiles, vals):
                     type = "sub"
                 else:
                     type = "subsub"
-                tb_children.append(get_table_row(L_v[i], K_v[i], tau[j], percentiles[k], vals[i][j][k], type, len(tau) * len(percentiles), len(percentiles)))
+                tb_children.append(get_table_row(L_v[i], K_v[i], tau[j], percentiles[k], vals[i][j][k], vals_stat[i][j], vals_rand[i][j], type, len(tau) * len(percentiles), len(percentiles)))
                 counter += 1
     t_children.append(html.Tbody(tb_children))
     return html.Table(t_children)
 
 if __name__ == "__main__":
     
-    epsilons = [0.1, 0.5, 1, 2, 5]
+    epsilons = [0.5, 1, 2, 5, 10]
     beta = 0.01
-    tau = [3, 4, 5]
+    tau = [2, 3, 4, 5]
     upper_bound = 65
     lower_bound = 0
     num_hats = 1
@@ -258,6 +264,8 @@ if __name__ == "__main__":
             plot_y = []
             plot_zt = []
             mech_bounds = []
+            mech_bounds_stat = []
+            mech_bounds_random = []
             print("Running experiments for epsilon: ", epsilon)
             for params in hat_dict["param_sets"]:
                 print("\tRunning experiment for parameter settings: ")
@@ -269,6 +277,8 @@ if __name__ == "__main__":
                 print("\tMean of user groups: ", np.mean(actual_means_of_user_groups))
                 plot_data = []
                 param_err_bounds = []
+                param_err_bounds_stat = []
+                param_err_bounds_random = []
                 for t in tau:
                     print("\tTau=", t)
                     losses = []
@@ -300,12 +310,16 @@ if __name__ == "__main__":
                         err_bounds.append(np.percentile(losses, p))
                     plot_data.append(np.mean(losses))
                     param_err_bounds.append(err_bounds)
+                    param_err_bounds_stat.append(np.mean(statistical_losses))
+                    param_err_bounds_random.append(np.mean(random_losses))
                 plot_zt.append(plot_data)
                 mech_bounds.append(param_err_bounds)
+                mech_bounds_stat.append(param_err_bounds_stat)
+                mech_bounds_random.append(param_err_bounds_random)
                 print()    
                 
             #Generate table here:
-            tab = get_table(plot_x, plot_y, tau, percentiles, mech_bounds)
+            tab = get_table(plot_x, plot_y, tau, percentiles, mech_bounds, mech_bounds_stat, mech_bounds_random)
             tables.append(tab)
             
             plot_z = []
@@ -354,7 +368,7 @@ if __name__ == "__main__":
     children = [
         html.H1(children='One Shot Exponential Mechanism for Mean Estimation'),
 
-        html.Div(children='Based on research conucted in [FS17], [Lev+21] and [GRST22]', className="description"),
+        html.Div(children='Based on research conducted in [FS17], [Lev+21] and [GRST22]', className="description"),
     ]
     
     for f in range (len(figs)):
