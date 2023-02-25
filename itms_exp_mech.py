@@ -236,13 +236,13 @@ def get_table(L_v, K_v, tau, percentiles, vals, vals_stat, vals_rand):
 
 if __name__ == "__main__":
     
-    epsilons = [0.5, 1, 2, 5, 10]
+    epsilons = [0.5, 1]
     beta = 0.01
     tau = [2, 3, 4, 5]
     upper_bound = 65
     lower_bound = 0
     num_hats = 1
-    num_exp = 100000
+    num_exp = 10000
     percentiles = [95, 98, 99]
     app = Dash(__name__)
     figs = []
