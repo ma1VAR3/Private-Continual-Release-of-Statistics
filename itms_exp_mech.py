@@ -289,30 +289,7 @@ if __name__ == "__main__":
                 param_err_bounds_random = []
                 for t in tau:
                     print("\tTau=", t)
-                    # losses = []
-                    # statistical_losses = []
-                    # random_losses = []
                     err_bounds = []
-                    # for j in range(num_exp):
-                    #     mean_coarse_estimate = private_median_of_means(
-                    #         actual_means_of_user_groups, 
-                    #         params["L"], 
-                    #         params["K"]
-                    #         t, 
-                    #         upper_bound, 
-                    #         lower_bound, 
-                    #         epsilon, 
-                    #         num_exp, 
-                    #         actual_mean
-                    #     )
-                    #     projected_vals = project_vals(actual_means_of_user_groups, mean_coarse_estimate, t)
-                    #     mean_projected_vals = np.mean(projected_vals)
-                    #     # print("\t\tMean of projected values: ", mean_projected_vals)
-                    #     noise_projected_vals = np.random.laplace(0, (8*t)/(params["K"]*epsilon))
-                    #     final_estimate = mean_projected_vals + noise_projected_vals
-                    #     losses.append(np.abs(final_estimate - actual_mean))
-                    #     statistical_losses.append(np.abs(mean_projected_vals - actual_mean))
-                    #     random_losses.append(np.abs(noise_projected_vals))
                     losses, statistical_losses, random_losses = private_median_of_means(
                         actual_means_of_user_groups,
                         params["L"],
