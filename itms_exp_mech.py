@@ -149,7 +149,7 @@ def get_probs(bins, left_counts, right_counts, epsilon):
     # print("Probability assigned to quantized means: ", probs)
     return probs
 
-def private_median_of_means(user_group_means, L, tau, ub, lb, epsilon):
+def private_median_of_means(user_group_means, L, K, tau, ub, lb, epsilon, num_exp, actual_mean):
     quantized_bins = np.arange(lb+tau/2, ub, tau)
     # quantized_bins = np.append(quantized_bins, np.arange(lb+tau/2, ub, tau))
     # quantized_bins = np.append(quantized_bins, ub) if quantized_bins[-1] != ub else quantized_bins
@@ -161,19 +161,27 @@ def private_median_of_means(user_group_means, L, tau, ub, lb, epsilon):
     quantized_means = np.sort(quantized_means)
     left_counts, right_counts = get_left_right_counts(quantized_bins, quantized_means)
     probs = get_probs(quantized_bins, left_counts, right_counts, epsilon)
-    selected_quantized_mean = np.random.choice(quantized_bins, p=probs)
-    return selected_quantized_mean
+    
+    selected_quantized_means = np.random.choice(quantized_bins, num_exp, p=probs)
+    projected_vals = project_vals(user_group_means, selected_quantized_means, tau)
+    
+    mean_of_projected_vals = np.mean(projected_vals, axis=1)
+    noise_projected_vals = np.random.laplace(0, (8*tau)/(K*epsilon), num_exp)
+    final_estimates = mean_of_projected_vals + noise_projected_vals
+    losses = np.abs(final_estimates - actual_mean)
+    statistical_losses = np.abs(mean_of_projected_vals - actual_mean)
+    random_losses = np.abs(noise_projected_vals)
+    
+    return losses, statistical_losses, random_losses
 
 def project_vals(vals, coarse_mean, tau):
+    
     ub = coarse_mean + 2*tau
     lb = coarse_mean - 2*tau
-    if lb<tau/2:
-        lb = tau/2
-        ub = lb + 4*tau
-    if ub>65:
-        ub = 65
-        lb = 65 - 4*tau
-    projected_vals = np.clip(vals, lb, ub)
+    lb = [tau/2 if l < tau/2 else (65-(4*t)) if l > (65-(4*t)) else l for l in lb]
+    ub = [(4.5)*tau if ub < (4.5)*tau else 65 if ub > 65 else ub for ub in ub]
+    
+    projected_vals = [np.clip(vals, lb[i], ub[i]) for i in range(len(lb))]
     return projected_vals
     
 def get_table_row(L_v, K_v, tau, percentile, val, val_stat, val_random, type, s1, s2):
@@ -236,13 +244,13 @@ def get_table(L_v, K_v, tau, percentiles, vals, vals_stat, vals_rand):
 
 if __name__ == "__main__":
     
-    epsilons = [0.5, 1]
+    epsilons = [0.5, 1, 2, 5]
     beta = 0.01
     tau = [2, 3, 4, 5]
     upper_bound = 65
     lower_bound = 0
     num_hats = 1
-    num_exp = 10000
+    num_exp = 100000
     percentiles = [95, 98, 99]
     app = Dash(__name__)
     figs = []
@@ -281,27 +289,41 @@ if __name__ == "__main__":
                 param_err_bounds_random = []
                 for t in tau:
                     print("\tTau=", t)
-                    losses = []
-                    statistical_losses = []
-                    random_losses = []
+                    # losses = []
+                    # statistical_losses = []
+                    # random_losses = []
                     err_bounds = []
-                    for j in range(num_exp):
-                        mean_coarse_estimate = private_median_of_means(
-                            actual_means_of_user_groups, 
-                            params["L"], 
-                            t, 
-                            upper_bound, 
-                            lower_bound, 
-                            epsilon
-                        )
-                        projected_vals = project_vals(actual_means_of_user_groups, mean_coarse_estimate, t)
-                        mean_projected_vals = np.mean(projected_vals)
-                        # print("\t\tMean of projected values: ", mean_projected_vals)
-                        noise_projected_vals = np.random.laplace(0, (8*t)/(params["K"]*epsilon))
-                        final_estimate = mean_projected_vals + noise_projected_vals
-                        losses.append(np.abs(final_estimate - actual_mean))
-                        statistical_losses.append(np.abs(mean_projected_vals - actual_mean))
-                        random_losses.append(np.abs(noise_projected_vals))
+                    # for j in range(num_exp):
+                    #     mean_coarse_estimate = private_median_of_means(
+                    #         actual_means_of_user_groups, 
+                    #         params["L"], 
+                    #         params["K"]
+                    #         t, 
+                    #         upper_bound, 
+                    #         lower_bound, 
+                    #         epsilon, 
+                    #         num_exp, 
+                    #         actual_mean
+                    #     )
+                    #     projected_vals = project_vals(actual_means_of_user_groups, mean_coarse_estimate, t)
+                    #     mean_projected_vals = np.mean(projected_vals)
+                    #     # print("\t\tMean of projected values: ", mean_projected_vals)
+                    #     noise_projected_vals = np.random.laplace(0, (8*t)/(params["K"]*epsilon))
+                    #     final_estimate = mean_projected_vals + noise_projected_vals
+                    #     losses.append(np.abs(final_estimate - actual_mean))
+                    #     statistical_losses.append(np.abs(mean_projected_vals - actual_mean))
+                    #     random_losses.append(np.abs(noise_projected_vals))
+                    losses, statistical_losses, random_losses = private_median_of_means(
+                        actual_means_of_user_groups,
+                        params["L"],
+                        params["K"],
+                        t,
+                        upper_bound,
+                        lower_bound,
+                        epsilon,
+                        num_exp,
+                        actual_mean
+                    )
                     print("\t\tAverage MAE across all runs: ", np.mean(losses))
                     print("\t\tAverage statistical loss across all runs: ", np.mean(statistical_losses))
                     print("\t\tAverage random loss across all runs: ", np.mean(random_losses))
