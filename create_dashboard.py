@@ -4,25 +4,28 @@ import plotly.graph_objects as go
 
 if __name__ == '__main__':
     app = Dash(__name__)
+    experiment_type = "wrap"
+    f_prefix = "./saved/" + experiment_type + "/"
+    port = 8051 if experiment_type == "wrap" else 8050
     
-    with open('./saved/best_fit/tables.pkl', 'rb') as f:
+    with open(f_prefix + "tables.pkl", 'rb') as f:
         tables = pickle.load(f)
         
-    with open('./saved/best_fit/figs.pkl', 'rb') as f:
+    with open(f_prefix + "figs.pkl", 'rb') as f:
         figs = pickle.load(f)
         
-    with open('./saved/best_fit/lap_bounds.pkl', 'rb') as f:
+    with open(f_prefix + "lap_bounds.pkl", 'rb') as f:
         lap_bounds = pickle.load(f)
         
-    with open('./saved/best_fit/epsilons.pkl', 'rb') as f:
+    with open(f_prefix + "epsilons.pkl", 'rb') as f:
         epsilons = pickle.load(f)
         
-    with open('./saved/best_fit/percentiles.pkl', 'rb') as f:
+    with open(f_prefix + "percentiles.pkl", 'rb') as f:
         percentiles = pickle.load(f)
     
     children = [
         html.H1(children='One Shot Exponential Mechanism for Mean Estimation'),
-
+        html.P(children='User group algo: ' + experiment_type, className="description"),
         html.Div(children='Based on research conducted in [FS17], [Lev+21] and [GRST22]', className="description"),
     ]
     
@@ -54,4 +57,4 @@ if __name__ == '__main__':
         
     app.layout = html.Div(children=children)
         
-    app.run_server(debug=True)
+    app.run_server(debug=False, port=port)

@@ -298,9 +298,10 @@ if __name__ == "__main__":
             for params in hat_dict["param_sets"]:
                 print("\tRunning experiment for parameter settings: ")
                 print("\tType: {}, L: {}, K: {}".format(params["Type"], params["L"], params["K"]))
+                user_arrays, calc_K = get_user_arrays(hat_data, params["L"], params["K"], experiment_type)
+                params["K"] = calc_K
                 plot_x.append(params["L"])
                 plot_y.append(params["K"])
-                user_arrays = get_user_arrays(hat_data, params["L"], params["K"], experiment_type)
                 actual_means_of_user_groups = [np.mean(x) for x in user_arrays]
                 print("\tMean of user groups: ", np.mean(actual_means_of_user_groups))
                 plot_data = []
@@ -384,7 +385,7 @@ if __name__ == "__main__":
             lap_bounds.append(lap_bounds_p)
             print()
     
-    f_prefix = "./saved" + experiment_type + "/"
+    f_prefix = "./saved/" + experiment_type + "/"
             
     with open(f_prefix + "tables.pkl", 'wb') as f:
         pickle.dump(tables, f)
