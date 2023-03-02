@@ -1,4 +1,5 @@
 import math
+import pickle
 import numpy as np
 import pandas as pd
 import h3
@@ -64,28 +65,27 @@ def get_hats_data(data, hats):
         m_avg = math.floor(np.mean(h_d_gb["speed"]))
         m_rms = math.floor(math.sqrt(np.mean([math.pow(i, 2) for i in h_d_gb["speed"]])))
         m_median = np.median(h_d_gb["speed"])
-        # m_medianX = m_median * 0.8
+        
         print("Sigma mi : ", np.sum(h_d_gb["speed"]))
         k_mstar = np.floor(np.sum([np.minimum(i, m_star) for i in h_d_gb["speed"]]) / m_star)
         k_mavg = np.floor(np.sum([np.minimum(i, m_avg) for i in h_d_gb["speed"]]) / m_avg)
         k_mrms = np.floor(np.sum([np.minimum(i, m_rms) for i in h_d_gb["speed"]]) / m_rms)
         k_mmedian = np.floor(np.sum([np.minimum(i, m_median) for i in h_d_gb["speed"]]) / m_median)
-        # k_medianX = np.floor(np.sum([np.minimum(i, m_medianX) for i in h_d_gb["speed"]]) / m_medianX)
+        
         print("When L=m* => L = {}, K = {}, Samples Used = {}".format(m_star, k_mstar, m_star*k_mstar))
         print("When L=m_rms => L = {}, K = {}, Samples Used = {}".format(m_rms, k_mrms, m_rms*k_mrms))
         print("When L=m_avg => L = {}, K = {}, Samples Used = {}".format(m_avg, k_mavg, m_avg*k_mavg))
         print("When L=m_median => L = {}, K = {}, Samples Used = {}".format(m_median, k_mmedian, m_median*k_mmedian))
-        # print("When L=m_medianX => L = {}, K = {}, Samples Used = {}".format(m_medianX, k_medianX, m_medianX*k_medianX))
         # p_sets.append({
         #     "Type" : "Maximum m",
         #     "L" : m_star,
         #     "K" : k_mstar
         # })
-        p_sets.append({
-            "Type" : "RMS m",
-            "L" : m_rms,
-            "K" : k_mrms
-        })
+        # p_sets.append({
+        #     "Type" : "RMS m",
+        #     "L" : m_rms,
+        #     "K" : k_mrms
+        # })
         p_sets.append({
             "Type" : "Average m",
             "L" : m_avg,
@@ -96,11 +96,6 @@ def get_hats_data(data, hats):
             "L" : m_median,
             "K" : k_mmedian
         })
-        # p_sets.append({
-        #     "Type" : "Median m*0.8",
-        #     "L" : m_medianX,
-        #     "K" : k_medianX
-        # })
         hat_data = {
             "HAT" : h,
             "data" : h_d,
@@ -109,28 +104,54 @@ def get_hats_data(data, hats):
         hats_data.append(hat_data)
     return hats_data
 
-def get_user_arrays(data, L, K):
-    users = np.unique(data["license_plate"])
-    user_arrays = np.zeros((int(K), int(L)))
-    arr_idx = 0
-    val_idx = 0
-    for u in users:
-        counter = 0
-        user_data = data[data["license_plate"]==u]["speed"].values
-        stop_cond = np.minimum(len(user_data), L)
-        while counter < stop_cond:
-            
-            user_arrays[arr_idx][val_idx] = user_data[counter]
-            counter += 1
-            val_idx += 1
-            if val_idx >= L:
-                val_idx = 0
-                arr_idx += 1
+def get_user_arrays(data, L, K, exp_type):
+    user_arrays = None
+    if exp_type == "wrap":
+        users = np.unique(data["license_plate"])
+        user_arrays = np.zeros((int(K), int(L)))
+        arr_idx = 0
+        val_idx = 0
+        for u in users:
+            counter = 0
+            user_data = data[data["license_plate"]==u]["speed"].values
+            stop_cond = np.minimum(len(user_data), L)
+            while counter < stop_cond:
+                
+                user_arrays[arr_idx][val_idx] = user_data[counter]
+                counter += 1
+                val_idx += 1
+                if val_idx >= L:
+                    val_idx = 0
+                    arr_idx += 1
+                if arr_idx >= K:
+                    break
             if arr_idx >= K:
                 break
-        if arr_idx >= K:
-            break
-    return user_arrays
+    
+    elif exp_type == "best_fit":
+        users = np.unique(data["license_plate"])
+        user_arrays = [[]]
+        for u in users:
+            counter = 0
+            user_data = data[data["license_plate"]==u]["speed"].values
+            stop_cond = np.minimum(len(user_data), L)
+            remaining_spaces = [L - len(user_arrays[i]) - stop_cond for i in range(len(user_arrays))]
+            remaining_spaces = np.array(remaining_spaces)
+            remaining_spaces = np.where(remaining_spaces < 0, L, remaining_spaces)
+            array_idx_to_fill = None
+            if np.min(remaining_spaces) >= L:
+                user_arrays.append([])
+                array_idx_to_fill = -1
+            else:
+                array_idx_to_fill = np.argmin(remaining_spaces)    
+            while counter < stop_cond:
+                user_arrays[array_idx_to_fill].append(user_data[counter])
+                counter += 1
+                
+        K = len(user_arrays)
+    
+    return user_arrays, K
+    
 
 def get_left_right_counts(bins, values):
     left_counts = []
@@ -142,31 +163,31 @@ def get_left_right_counts(bins, values):
         
     return left_counts, right_counts
 
-def get_probs(bins, left_counts, right_counts, epsilon):
+def get_probs(bins, left_counts, right_counts, epsilon, factor):
     c = np.maximum(left_counts, right_counts)
-    probs = [math.exp((-epsilon*c[i])/4) for i in range(len(bins))]
+    probs = [math.exp((-epsilon*c[i])/2 * factor) for i in range(len(bins))]
     probs = probs / np.sum(probs)
     # print("Probability assigned to quantized means: ", probs)
     return probs
 
-def private_median_of_means(user_group_means, L, K, tau, ub, lb, epsilon, num_exp, actual_mean):
+def private_median_of_means(user_group_means, L, K, tau, ub, lb, epsilon, num_exp, actual_mean, exp_type):
     quantized_bins = np.arange(lb+tau/2, ub, tau)
     # quantized_bins = np.append(quantized_bins, np.arange(lb+tau/2, ub, tau))
     # quantized_bins = np.append(quantized_bins, ub) if quantized_bins[-1] != ub else quantized_bins
-    
+    factor = 2 if exp_type == "wrap" else 1
     diff_matrix = np.subtract.outer(user_group_means, quantized_bins)
     idx = np.abs(diff_matrix).argmin(axis=1)
     quantized_means = quantized_bins[idx]
     
     quantized_means = np.sort(quantized_means)
     left_counts, right_counts = get_left_right_counts(quantized_bins, quantized_means)
-    probs = get_probs(quantized_bins, left_counts, right_counts, epsilon)
+    probs = get_probs(quantized_bins, left_counts, right_counts, epsilon/2, factor)
     
     selected_quantized_means = np.random.choice(quantized_bins, num_exp, p=probs)
     projected_vals = project_vals(user_group_means, selected_quantized_means, tau)
     
     mean_of_projected_vals = np.mean(projected_vals, axis=1)
-    noise_projected_vals = np.random.laplace(0, (8*tau)/(K*epsilon), num_exp)
+    noise_projected_vals = np.random.laplace(0, (4*tau*factor)/(K*(epsilon/2)), num_exp)
     final_estimates = mean_of_projected_vals + noise_projected_vals
     losses = np.abs(final_estimates - actual_mean)
     statistical_losses = np.abs(mean_of_projected_vals - actual_mean)
@@ -243,7 +264,7 @@ def get_table(L_v, K_v, tau, percentiles, vals, vals_stat, vals_rand):
     return html.Table(t_children)
 
 if __name__ == "__main__":
-    
+    experiment_type = "best_fit"
     epsilons = [0.5, 1, 2, 5]
     beta = 0.01
     tau = [2, 3, 4, 5]
@@ -252,7 +273,6 @@ if __name__ == "__main__":
     num_hats = 1
     num_exp = 100000
     percentiles = [95, 98, 99]
-    app = Dash(__name__)
     figs = []
     tables = []
     lap_bounds = []
@@ -280,7 +300,7 @@ if __name__ == "__main__":
                 print("\tType: {}, L: {}, K: {}".format(params["Type"], params["L"], params["K"]))
                 plot_x.append(params["L"])
                 plot_y.append(params["K"])
-                user_arrays = get_user_arrays(hat_data, params["L"], params["K"])
+                user_arrays = get_user_arrays(hat_data, params["L"], params["K"], experiment_type)
                 actual_means_of_user_groups = [np.mean(x) for x in user_arrays]
                 print("\tMean of user groups: ", np.mean(actual_means_of_user_groups))
                 plot_data = []
@@ -299,7 +319,8 @@ if __name__ == "__main__":
                         lower_bound,
                         epsilon,
                         num_exp,
-                        actual_mean
+                        actual_mean,
+                        experiment_type
                     )
                     print("\t\tAverage MAE across all runs: ", np.mean(losses))
                     print("\t\tAverage statistical loss across all runs: ", np.mean(statistical_losses))
@@ -353,7 +374,7 @@ if __name__ == "__main__":
             sigma_mi = np.sum(h_d_gb["speed"])
             lap_losses = []
             for j in range(num_exp):
-                noise = np.random.laplace(0, (upper_bound - lower_bound) * m_star/(sigma_mi*2*epsilon))
+                noise = np.random.laplace(0, (upper_bound - lower_bound) * m_star/(sigma_mi*epsilon))
                 lap_losses.append(np.abs(noise))
             print("\t\tAverage MAE across all runs: ", np.mean(lap_losses))
             lap_bounds_p = []
@@ -362,40 +383,21 @@ if __name__ == "__main__":
                 lap_bounds_p.append(np.percentile(lap_losses, p))
             lap_bounds.append(lap_bounds_p)
             print()
+    
+    f_prefix = "./saved" + experiment_type + "/"
             
+    with open(f_prefix + "tables.pkl", 'wb') as f:
+        pickle.dump(tables, f)
     
-    children = [
-        html.H1(children='One Shot Exponential Mechanism for Mean Estimation'),
-
-        html.Div(children='Based on research conducted in [FS17], [Lev+21] and [GRST22]', className="description"),
-    ]
+    with open(f_prefix + "figs.pkl", 'wb') as f:
+        pickle.dump(figs, f)
+        
+    with open(f_prefix + "lap_bounds.pkl", 'wb') as f:
+        pickle.dump(lap_bounds, f)
     
-    for f in range (len(figs)):
-        lap_children = []
-        for p in range(len(percentiles)):
-            lap_children.append(
-                html.P(children='For Laplace Mechanism, {}th Percentile MAE: '.format(percentiles[p])+str(lap_bounds[f][p]), className="laplace-bounds")
-            )
-        children.append(
-            html.Div([
-                html.P(children='For Epsilon: '+str(epsilons[f]), className="epsilon"),
-                html.Div([
-                        dcc.Graph(
-                        id='3D-plot'+str(f),
-                        figure=figs[f][0],
-                        className="line-plot"
-                    ),
-                    dcc.Graph(
-                        id='heatmap-plot'+str(f),
-                        figure=figs[f][1],
-                        className="heatmap-plot"
-                    )
-                ], className="graph-container"),
-                html.Div([tables[f]], className="table-container"),
-                html.Div(children=lap_children, className="lap-bounds-container")
-            ], className="epsilon-container")
-        )
+    with open(f_prefix + "epsilons.pkl", 'wb') as f:
+        pickle.dump(epsilons, f)
         
-    app.layout = html.Div(children=children)
+    with open(f_prefix + "percentiles.pkl", 'wb') as f:
+        pickle.dump(percentiles, f)
         
-    app.run_server(debug=True)
