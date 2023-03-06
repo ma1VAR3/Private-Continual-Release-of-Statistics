@@ -165,7 +165,7 @@ def get_left_right_counts(bins, values):
 
 def get_probs(bins, left_counts, right_counts, epsilon, factor):
     c = np.maximum(left_counts, right_counts)
-    probs = [math.exp((-epsilon*c[i])/2 * factor) for i in range(len(bins))]
+    probs = [math.exp((-epsilon*c[i])/(2 * factor)) for i in range(len(bins))]
     probs = probs / np.sum(probs)
     # print("Probability assigned to quantized means: ", probs)
     return probs
@@ -265,7 +265,7 @@ def get_table(L_v, K_v, tau, percentiles, vals, vals_stat, vals_rand):
 
 if __name__ == "__main__":
     experiment_type = "best_fit"
-    epsilons = [0.5, 1, 2, 5]
+    epsilons = [0.1, 0.2, 0.5, 1, 2, 5]
     beta = 0.01
     tau = [2, 3, 4, 5]
     upper_bound = 65
