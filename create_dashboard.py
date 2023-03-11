@@ -4,10 +4,13 @@ import plotly.graph_objects as go
 
 if __name__ == '__main__':
     app = Dash(__name__)
-    experiment_type = "wrap"
-    f_prefix = "./saved/" + experiment_type + "/"
-    port = 8051 if experiment_type == "wrap" else 8050
-    
+    experiment_type1 = "best_fit"
+    experiment_type2 = "quant"
+    f_prefix = "./saved/" + experiment_type2 + "/" + experiment_type1 + "/"
+    port = 8051 if experiment_type1 == "wrap" else 8050
+    if experiment_type2 == "quant":
+        port += 2
+        
     with open(f_prefix + "tables.pkl", 'rb') as f:
         tables = pickle.load(f)
         
@@ -25,7 +28,8 @@ if __name__ == '__main__':
     
     children = [
         html.H1(children='One Shot Exponential Mechanism for Mean Estimation'),
-        html.P(children='User group algo: ' + experiment_type, className="description"),
+        html.P(children='User group algo: ' + experiment_type1, className="description2"),
+        html.P(children='Concentration algo: ' + experiment_type2, className="description2"),
         html.Div(children='Based on research conducted in [FS17], [Lev+21] and [GRST22]', className="description"),
     ]
     
