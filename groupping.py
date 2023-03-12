@@ -42,11 +42,12 @@ def get_user_arrays(data, L, exp_type):
                 user_arrays.append([])
                 array_idx_to_fill = -1
             else:
-                array_idx_to_fill = np.argmin(remaining_spaces)    
+                array_idx_to_fill = np.argmin(remaining_spaces)   
+            
             while counter < stop_cond:
                 user_arrays[array_idx_to_fill].append(user_data[counter])
                 counter += 1
                 
         K = len(user_arrays)
-    
+        
     return user_arrays, K

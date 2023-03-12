@@ -23,6 +23,7 @@ def get_probs_quantiles(vals, alpha, epsilon):
     k = len(vals)
     probs = [(vals[i+1] - vals[i])*(math.exp(-epsilon*(i - (alpha*k))))for i in range(len(vals)-1)]
     probs = probs / np.sum(probs)
+    
     return probs
 
 def private_quantile(vals, q, epsilon, ub, lb, num_vals):
@@ -78,26 +79,28 @@ def private_estimation(user_group_means, K, ub, lb, epsilon, num_exp, actual_mea
             np.save(file_base_tau + 'random_losses.npy', random_losses)
     
     elif conc_algo == "quantiles":
-        file_base += 'lq_' + str(config['lower_quantile']) + '/'
-        os.makedirs(file_base, exist_ok=True)
-        user_group_means = np.append(user_group_means, lb) if lb not in user_group_means else user_group_means
-        user_group_means = np.append(user_group_means, ub) if ub not in user_group_means else user_group_means
-        user_group_means = np.sort(user_group_means)
-        factor = 2 if groupping_algo == "wrap" else 1
-        quantile_1 = config['lower_quantile']
-        quantile_2 = config['upper_quantile']
-        q1_t = private_quantile(user_group_means, quantile_1, epsilon/4, ub, lb, num_exp)
-        q2_t = private_quantile(user_group_means, quantile_2, epsilon/4, ub, lb, num_exp)
-        q1 = np.minimum(q1_t, q2_t)
-        q2 = np.maximum(q1_t, q2_t)
-        projected_vals = [np.clip(user_group_means, q1[i], q2[i]) for i in range(len(q1))]
-        mean_of_projected_vals = np.mean(projected_vals, axis=1)
-        noise_projected_vals = [np.random.laplace(0, ( ((q2[i]-q1[i])*factor) / K * (epsilon/2))) for i in range(len(q1))]
-        final_estimates = mean_of_projected_vals + noise_projected_vals
-        losses = np.abs(final_estimates - actual_mean)
-        np.save(file_base_tau + 'losses.npy', losses)
-        statistical_losses = np.abs(mean_of_projected_vals - actual_mean)
-        np.save(file_base_tau + 'statistical_losses.npy', statistical_losses)
-        random_losses = np.abs(noise_projected_vals)
-        np.save(file_base_tau + 'random_losses.npy', random_losses)
+        quantiles = config["lower_quantile"]
+        for q in quantiles:
+            file_base_q = file_base + 'lq_' + str(q) + '/'
+            os.makedirs(file_base_q, exist_ok=True)
+            user_group_means = np.append(user_group_means, lb) if lb not in user_group_means else user_group_means
+            user_group_means = np.append(user_group_means, ub) if ub not in user_group_means else user_group_means
+            user_group_means = np.sort(user_group_means)
+            factor = 2 if groupping_algo == "wrap" else 1
+            quantile_1 = q
+            quantile_2 = 1 - q
+            q1_t = private_quantile(user_group_means, quantile_1, epsilon/4, ub, lb, num_exp)
+            q2_t = private_quantile(user_group_means, quantile_2, epsilon/4, ub, lb, num_exp)
+            q1 = np.minimum(q1_t, q2_t)
+            q2 = np.maximum(q1_t, q2_t)
+            projected_vals = [np.clip(user_group_means, q1[i], q2[i]) for i in range(len(q1))]
+            mean_of_projected_vals = np.mean(projected_vals, axis=1)
+            noise_projected_vals = [np.random.laplace(0, ( ((q2[i]-q1[i])*factor) / K * (epsilon/2))) for i in range(len(q1))]
+            final_estimates = mean_of_projected_vals + noise_projected_vals
+            losses = np.abs(final_estimates - actual_mean)
+            np.save(file_base_q + 'losses.npy', losses)
+            statistical_losses = np.abs(mean_of_projected_vals - actual_mean)
+            np.save(file_base_q + 'statistical_losses.npy', statistical_losses)
+            random_losses = np.abs(noise_projected_vals)
+            np.save(file_base_q + 'random_losses.npy', random_losses)
     
