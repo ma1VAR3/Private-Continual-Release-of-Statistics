@@ -12,7 +12,7 @@ h1{
     text-align: center;
     font-style: italic;
     font-size: 1.5em;
-    margin-bottom: 4rem;
+    margin-bottom: 2rem;
 }
 
 .description2{
@@ -77,3 +77,16 @@ th, td {
 .tbl-row2:nth-child(even) {
     background-color: #c1c1c1;
 } */
+
+.conc-algo-container {
+    margin: auto;
+    padding:  0.3rem 3rem;
+    background-color: #dadada;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+}
+
+.conc-algo {
+    font-size: 1.2rem;
+    text-align: center;
+}

@@ -14,14 +14,14 @@ def get_left_right_counts(bins, values):
 
 def get_probs(bins, left_counts, right_counts, epsilon, factor):
     c = np.maximum(left_counts, right_counts)
-    probs = [math.exp((-epsilon*c[i])/2 * factor) for i in range(len(bins))]
+    probs = [math.exp((-epsilon*c[i])/(2 * factor)) for i in range(len(bins))]
     probs = probs / np.sum(probs)
     # print("Probability assigned to quantized means: ", probs)
     return probs
 
 def get_probs_quantiles(vals, alpha, epsilon):
-    k = len(vals)
-    probs = [(vals[i+1] - vals[i])*(math.exp(-epsilon*(i - (alpha*k))))for i in range(len(vals)-1)]
+    k = len(vals) - 1
+    probs = [(vals[i+1] - vals[i])*(math.exp(-(epsilon/2)*abs(i - (alpha*k))))for i in range(len(vals)-1)]
     probs = probs / np.sum(probs)
     
     return probs

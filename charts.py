@@ -6,12 +6,27 @@ from dash import Dash, html, dcc
 import plotly.graph_objects as go
 
 
-def get_figure(x_axis_data, y_axis_data, legend, legend_prefix="",multiple=True):
+def get_figure(x_axis_data, x_label, y_axis_data, y_label, title, legend, legend_prefix="",multiple=True):
     fig = go.Figure()
     for i in range(len(y_axis_data)):
         fig.add_trace(
-            go.Scatter(x=x_axis_data, y=y_axis_data[i], mode='lines+markers', name=legend_prefix+str(legend[i]))
+            go.Scatter(
+                x=x_axis_data, 
+                y=y_axis_data[i], 
+                mode='lines+markers', 
+                name=legend_prefix+str(legend[i]), 
+            )
         )
+    fig.update_layout(
+        # scene = dict(
+        #     xaxis_title=x_label,
+        #     yaxis_title=y_label,
+        # ),
+        xaxis_title=x_label,
+        yaxis_title=y_label,
+        title_text = title,
+        title_x=0.5
+    )
     return fig
 
 def generate_and_save_figures():
@@ -50,10 +65,11 @@ def generate_and_save_figures():
             y_data_percentiles.append(tau_results_percentiles)
         fig_f = './figures/coarse_mean/{}/{}.pkl'
         os.makedirs('./figures/coarse_mean/{}/'.format(algo), exist_ok=True)
+        title = "{} vs epsilon for grouping algo: {}"
         with open(fig_f.format(algo, "mae"), 'wb') as f:
-            pickle.dump(get_figure(x_data, y_data_mae, taus, "tau="), f)
+            pickle.dump(get_figure(x_data, "epsilon", y_data_mae, "MAE", title.format("MAE", algo), taus, "tau="), f)
         with open(fig_f.format(algo, "percentiles"), 'wb') as f:
-            pickle.dump(get_figure(x_data, y_data_percentiles, taus, "tau="), f)
+            pickle.dump(get_figure(x_data, "epsilon", y_data_percentiles, "95th ptile error", title.format("95th ptile err", algo),taus, "tau="), f)
         
         
     # Quantiles plots
@@ -73,7 +89,8 @@ def generate_and_save_figures():
             y_data_percentiles.append(q_results_percentiles)
         fig_f = './figures/quantiles/{}/{}.pkl'
         os.makedirs('./figures/quantiles/{}/'.format(algo), exist_ok=True)
+        title = "{} vs epsilon for grouping algo: {}"
         with open(fig_f.format(algo, "mae"), 'wb') as f:
-            pickle.dump(get_figure(x_data, y_data_mae, quants, "lq="), f)
+            pickle.dump(get_figure(x_data, "epsilon", y_data_mae, "MAE", title.format("MAE", algo), quants, "lq="), f)
         with open(fig_f.format(algo, "percentiles"), 'wb') as f:
-            pickle.dump(get_figure(x_data, y_data_percentiles, quants, "lq="), f)
+            pickle.dump(get_figure(x_data, "epsilon", y_data_percentiles, "95th ptile err", title.format("95th ptile err", algo) , quants, "lq="), f)

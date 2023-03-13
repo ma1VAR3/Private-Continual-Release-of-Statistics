@@ -19,6 +19,7 @@ if __name__ == "__main__":
     user_arrays, K = get_user_arrays(data, L, config["user_groupping"])
     actual_mean = np.mean(data["Value"].values)
     user_group_means = [np.mean(x) for x in user_arrays]
+    np.save("./user_group_mean.npy", user_group_means)
     epsilons = config["epsilons"]
     upper_bound = config["data"][dataset]["upper_bound"]
     lower_bound = config["data"][dataset]["lower_bound"]

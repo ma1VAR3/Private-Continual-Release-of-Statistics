@@ -29,7 +29,7 @@ if __name__ == '__main__':
             with open(f_prefix + p_file, 'rb') as f:
                 percentile = pickle.load(f)
             g_algo_children.append(html.Div([
-                html.P(children='User group algo: ' + g_algo),
+                # html.P(children='User group algo: ' + g_algo),
                 html.Div([
                     dcc.Graph(
                         id='MAE-'+c_clgo+'-'+g_algo,
@@ -43,9 +43,9 @@ if __name__ == '__main__':
             ]))
         children.append(
             html.Div([
-                html.P(children='Concentration algo: ' + c_clgo),
-                html.Div(g_algo_children)
-            ])
+                html.P(children='Concentration algo: ' + c_clgo, className="conc-algo"),
+                html.Div(g_algo_children),
+            ], className="conc-algo-container")
         )
     app.layout = html.Div(children=children)
         
