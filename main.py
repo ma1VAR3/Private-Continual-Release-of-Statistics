@@ -16,7 +16,9 @@ if __name__ == "__main__":
     # data_iid = 
     data = data_non_iid
     L = calc_user_array_length(data, type=config["user_group_size"])
+    print("L: ", L)
     user_arrays, K = get_user_arrays(data, L, config["user_groupping"])
+    print("K:", K)
     actual_mean = np.mean(data["Value"].values)
     user_group_means = [np.mean(x) for x in user_arrays]
     np.save("./user_group_mean.npy", user_group_means)
