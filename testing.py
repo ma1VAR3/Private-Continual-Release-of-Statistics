@@ -20,6 +20,8 @@ def private_quantile(vals, q, epsilon, ub, lb, num_vals):
     probs = get_probs_quantiles(new_s_vals, q, epsilon)
     indices = np.arange(0, len(new_s_vals)-1)
     selected_interval = np.random.choice(indices, num_vals, p=probs)
+    fig = px.histogram(selected_interval, nbins=30)
+    fig.show()
     selected_quantile = [np.random.uniform(new_s_vals[selected_interval[i]], new_s_vals[selected_interval[i]+1]) for i in range(len(selected_interval))]
     return selected_quantile
 
@@ -28,7 +30,7 @@ def private_estimation(user_group_means, K, ub, lb, epsilon, num_exp, actual_mea
     q = 0.90
     
         
-    print("95th percentile: ", np.percentile(user_group_means, q*100))
+    print("{q}th percentile: ", np.percentile(user_group_means, q*100))
     user_group_means = np.append(user_group_means, lb) if lb not in user_group_means else user_group_means
     user_group_means = np.append(user_group_means, ub) if ub not in user_group_means else user_group_means
     user_group_means = np.sort(user_group_means)
@@ -46,7 +48,6 @@ def private_estimation(user_group_means, K, ub, lb, epsilon, num_exp, actual_mea
     noise_projected_vals = [np.random.laplace(0, ( ((q2[i]-q1[i])*factor) / K * (epsilon/2))) for i in range(len(q1))]
     final_estimates = mean_of_projected_vals + noise_projected_vals
     losses = np.abs(final_estimates - actual_mean)
-        
     
 if __name__ == "__main__":
     user_group_means = np.load("./user_group_mean.npy")
