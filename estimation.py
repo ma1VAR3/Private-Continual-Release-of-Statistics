@@ -14,14 +14,14 @@ def get_left_right_counts(bins, values):
 
 def get_probs(bins, left_counts, right_counts, epsilon, factor):
     c = np.maximum(left_counts, right_counts)
-    probs = [math.exp( (-epsilon*c[i]) / (2 * factor) ) for i in range(len(bins))]
+    probs = [math.exp(- (epsilon*c[i]) / (2 * factor) ) for i in range(len(bins))]
     probs = probs / np.sum(probs)
     # print("Probability assigned to quantized means: ", probs)
     return probs
 
 def get_probs_quantiles(vals, alpha, epsilon, factor):
     k = len(vals) - 1
-    probs = [(vals[i+1] - vals[i])*(math.exp(-  (epsilon/ (2 * factor))  *   abs(i - (alpha*k))))for i in range(len(vals)-1)]
+    probs = [(vals[i+1] - vals[i])*(math.exp(- (epsilon/ (2 * factor))  *   abs(i - (alpha*k))))for i in range(len(vals)-1)]
     probs = probs / np.sum(probs)
     
     return probs
@@ -38,16 +38,20 @@ def private_quantile(vals, q, epsilon, ub, lb, num_vals, factor):
     selected_quantile = [np.random.uniform(new_s_vals[selected_interval[i]], new_s_vals[selected_interval[i]+1]) for i in range(len(selected_interval))]
     return selected_quantile
 
-def private_estimation(user_group_means, K, ub, lb, epsilon, num_exp, actual_mean, groupping_algo, conc_algo, config):
+def private_estimation(user_group_means, L, K, ub, lb, epsilon, num_exp, actual_mean, groupping_algo, conc_algo, config):
     
     file_base = './results/' + conc_algo + '/' + groupping_algo + '/' + 'epsilon_' + str(epsilon) + '/'
     
     if conc_algo == "coarse_mean":
         taus = config["tau"]
+        delta = config["delta"]
         for tau in taus:
             file_base_tau = file_base + 'tau_' + str(tau) + '/'
             os.makedirs(file_base_tau, exist_ok=True)
             # Quantizing means
+            if tau == -1:
+                tau = ((ub-lb)/2) * (math.sqrt( (2/L) * (math.log( (2*K) /delta )) ))
+                print("Levy tau: ", tau)
             quantized_bins = np.arange(lb+tau/2, ub, tau)
             factor = 2 if groupping_algo == "wrap" else 1
             diff_matrix = np.subtract.outer(user_group_means, quantized_bins)

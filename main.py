@@ -29,6 +29,7 @@ if __name__ == "__main__":
     for e in epsilons:
         private_estimation(
             user_group_means,
+            L,
             K,
             upper_bound,
             lower_bound,
