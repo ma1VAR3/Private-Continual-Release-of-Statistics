@@ -14,7 +14,7 @@ if __name__ == '__main__':
     ]
 
     f_base = "./figures/{}/{}/"
-    m_file = "mae.pkl"
+    m_file = "rms.pkl"
     p_file = "percentiles.pkl"
     
     conc_algos = ["quantiles", "coarse_mean"]

@@ -65,13 +65,13 @@ def private_estimation(user_group_means, L, K, ub, lb, epsilon, num_exp, actual_
             
             # Selecting quantized means and projecting them
             selected_quantized_means = np.random.choice(quantized_bins, num_exp, p=probs)
-            ub_calc = selected_quantized_means + 2*tau
-            lb_calc = selected_quantized_means - 2*tau
-            lb_calc = [lb if l < lb else (ub-(4*tau)) if l > (ub-(4*tau)) else l for l in lb_calc]
-            ub_calc = [(lb + (4*tau)) if u < (lb + (4*tau)) else ub if u > ub else u for u in ub_calc]
+            ub_calc = selected_quantized_means + 1.5*tau
+            lb_calc = selected_quantized_means - 1.5*tau
+            lb_calc = [lb if l < lb else (ub-(3*tau)) if l > (ub-(3*tau)) else l for l in lb_calc]
+            ub_calc = [(lb + (3*tau)) if u < (lb + (3*tau)) else ub if u > ub else u for u in ub_calc]
             projected_vals = [np.clip(user_group_means, lb_calc[i], ub_calc[i]) for i in range(len(lb_calc))]
             mean_of_projected_vals = np.mean(projected_vals, axis=1)
-            noise_projected_vals = np.random.laplace(0, (4*tau*factor)/(K*(epsilon/2)), num_exp)
+            noise_projected_vals = np.random.laplace(0, (3*tau*factor)/(K*(epsilon/2)), num_exp)
             final_estimates = mean_of_projected_vals + noise_projected_vals
             
             # Calculating losses
@@ -106,4 +106,16 @@ def private_estimation(user_group_means, L, K, ub, lb, epsilon, num_exp, actual_
             np.save(file_base_q + 'statistical_losses.npy', statistical_losses)
             random_losses = np.abs(noise_projected_vals)
             np.save(file_base_q + 'random_losses.npy', random_losses)
+    
+def baseline_estimation(data, ub, lb, epsilons, num_exp):
+    data_grouped = data.groupby(["User"]).agg({"Value":"count"}).reset_index()
+    max_contrib = np.max(data_grouped["Value"])
+    sum_contrib = np.sum(data_grouped["Value"])
+    f_base = './results/baseline/epsilon_{}/'
+    for e in epsilons:
+        b = ((ub - lb) * max_contrib) / (sum_contrib * e)
+        noise = np.random.laplace(0, b, num_exp)
+        os.makedirs(f_base.format(e), exist_ok=True)
+        np.save(f_base.format(e) + 'losses.npy', np.abs(noise))
+
     
