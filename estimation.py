@@ -111,6 +111,8 @@ def baseline_estimation(data, ub, lb, epsilons, num_exp):
     data_grouped = data.groupby(["User"]).agg({"Value":"count"}).reset_index()
     max_contrib = np.max(data_grouped["Value"])
     sum_contrib = np.sum(data_grouped["Value"])
+    print("Max contribution: ", max_contrib)
+    print("Sum of contributions: ", sum_contrib)
     f_base = './results/baseline/epsilon_{}/'
     for e in epsilons:
         b = ((ub - lb) * max_contrib) / (sum_contrib * e)

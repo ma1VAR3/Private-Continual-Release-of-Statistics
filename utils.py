@@ -63,7 +63,7 @@ def calc_user_array_length(data, type="median"):
     L = None
     data_grouped = data.groupby(["User"]).agg({"Value": "count"}).reset_index()
     if type=="median":
-        L = np.median(data_grouped["Value"])
+        L = math.floor(np.median(data_grouped["Value"]))
     elif type=="mean":
         L = math.floor(np.mean(data_grouped["Value"]))
     elif type=="max":

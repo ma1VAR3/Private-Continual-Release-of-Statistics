@@ -134,3 +134,20 @@ vectorization.py
 non_vectorized_copy.py
 
 /temp
+
+figures/
+figures_6/
+figures_7/
+figures_8/
+figures_100/
+figures_105/
+figures_110/
+
+
+/figures
+/figures_6
+/figures_7
+/figures_8
+/figures_100
+/figures_105
+/figures_110

@@ -100,6 +100,19 @@ def generate_and_save_figures():
     y_data_mae_final = []    
     y_data_percentiles_final = []
     names = []
+    
+    baseline_results_mae = []
+    baseline_results_percentiles = []
+    f_base_b = "./results/baseline/epsilon_{}/losses.npy"
+    for e in epsilons:
+        losses_b = np.load(f_base_b.format(e))
+        baseline_results_mae.append(np.sqrt(np.mean(np.square(losses_b))))
+        baseline_results_percentiles.append(np.percentile(losses_b, 95))
+    y_data_mae_final.append(baseline_results_mae)
+    y_data_percentiles_final.append(baseline_results_percentiles)
+    names.append("Baseline")
+    
+    
     for algo in groupping_algos:
         y_data_mae_cm = []
         y_data_mae_q = []
@@ -114,24 +127,16 @@ def generate_and_save_figures():
             y_data_mae_q.append(np.sqrt(np.mean(np.square(losses_q))))
             y_data_perc_cm.append(np.percentile(losses_levy, 95))
             y_data_perc_q.append(np.percentile(losses_q, 95))
-            
-        y_data_mae_final.append(y_data_mae_cm)
-        y_data_percentiles_final.append(y_data_perc_cm)
-        names.append("Levy+"+str(algo))
+        
+        if algo == "wrap":
+            y_data_mae_final.append(y_data_mae_cm)
+            y_data_percentiles_final.append(y_data_perc_cm)
+            names.append("Levy+"+str(algo))
         y_data_mae_final.append(y_data_mae_q)
         y_data_percentiles_final.append(y_data_perc_q)
         names.append("Quantiles0.1+"+str(algo))
         
-    baseline_results_mae = []
-    baseline_results_percentiles = []
-    f_base_b = "./results/baseline/epsilon_{}/losses.npy"
-    for e in epsilons:
-        losses_b = np.load(f_base_b.format(e))
-        baseline_results_mae.append(np.sqrt(np.mean(np.square(losses_b))))
-        baseline_results_percentiles.append(np.percentile(losses_b, 95))
-    y_data_mae_final.append(baseline_results_mae)
-    y_data_percentiles_final.append(baseline_results_percentiles)
-    names.append("Baseline")
+    
     
     fig_f = './figures/final/{}.pkl'    
     os.makedirs('./figures/final/', exist_ok=True)

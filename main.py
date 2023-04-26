@@ -27,6 +27,7 @@ if __name__ == "__main__":
     upper_bound = config["data"][dataset]["upper_bound"]
     lower_bound = config["data"][dataset]["lower_bound"]
     num_experiments = config["num_experiments"]
+    print("Actual mean: ", actual_mean)
     baseline_estimation(data, upper_bound, lower_bound, epsilons, num_experiments)
     for e in epsilons:
         private_estimation(

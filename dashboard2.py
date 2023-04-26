@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from charts import generate_and_save_figures
 
 if __name__ == '__main__':
+    
     generate_and_save_figures()
     app = Dash(__name__)
     
@@ -12,7 +13,6 @@ if __name__ == '__main__':
         html.H1(children='One Shot Exponential Mechanism for Mean Estimation'),
         html.Div(children='Based on research conducted in [FS17], [Lev+21] and [GRST22]', className="description"),
     ]
-
     f_base = "./figures/final/{}"
     m_file = "./figures/final/rms.pkl"
     p_file = "./figures/final/95p.pkl"
@@ -71,5 +71,5 @@ if __name__ == '__main__':
     #     )
     app.layout = html.Div(children=children)
         
-    app.run_server(debug=True)
+    app.run_server(debug=False, port = 8050)
             
