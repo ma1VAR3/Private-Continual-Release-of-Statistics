@@ -8,7 +8,7 @@ def load_data(dataset="ITMS", config=None):
     data = None
         
     if dataset == "ITMS":
-        df =pd.read_csv("./suratITMSDPtest/suratITMSDPtest.csv")
+        df = pd.read_csv("./suratITMSDPtest/suratITMSDPtest.csv")
         df = df.drop_duplicates(subset=['trip_id', 'observationDateTime'], ignore_index=True)
         df = df.drop(columns = [
                     "trip_direction",
